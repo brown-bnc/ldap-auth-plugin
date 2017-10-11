@@ -1,5 +1,5 @@
 /*
- * web: org.nrg.xnat.security.XnatLdapUserDetailsMapper
+ * web: XnatLdapUserDetailsMapper
  * XNAT http://www.xnat.org
  * Copyright (c) 2005-2017, Washington University School of Medicine and Howard Hughes Medical Institute
  * All Rights Reserved
@@ -7,7 +7,7 @@
  * Released under the Simplified BSD.
  */
 
-package org.nrg.xnat.security;
+package org.nrg.xnat.auth.ldap;
 
 import lombok.extern.slf4j.Slf4j;
 import org.nrg.framework.services.ContextService;
@@ -16,6 +16,7 @@ import org.nrg.xdat.preferences.SiteConfigPreferences;
 import org.nrg.xdat.security.helpers.Users;
 import org.nrg.xdat.services.XdatUserAuthService;
 import org.nrg.xft.security.UserI;
+import org.nrg.xnat.security.exceptions.NewAutoAccountNotAutoEnabledException;
 import org.springframework.ldap.core.DirContextOperations;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -79,13 +80,13 @@ public class XnatLdapUserDetailsMapper extends LdapUserDetailsMapper {
             if ((!XDAT.getSiteConfigPreferences().getEmailVerification() || xdatUser.isVerified()) && userDetails.getAuthorization().isEnabled()) {
                 return userDetails;
             } else {
-                throw new NewLdapAccountNotAutoEnabledException(
+                throw new NewAutoAccountNotAutoEnabledException(
                         "Successful first-time authentication via LDAP, but accounts are not auto-enabled or email verification required.  We'll treat this the same as we would a user registration"
                         , userDetails
                 );
             }
         } catch (Exception e) {
-            throw new NewLdapAccountNotAutoEnabledException(
+            throw new NewAutoAccountNotAutoEnabledException(
                     "Successful first-time authentication via LDAP, but accounts are not auto-enabled or email verification required.  We'll treat this the same as we would a user registration"
                     , userDetails
             );

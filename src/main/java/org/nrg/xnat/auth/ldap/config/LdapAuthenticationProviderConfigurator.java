@@ -1,5 +1,5 @@
 /*
- * web: org.nrg.xnat.security.config.LdapAuthenticationProviderConfigurator
+ * web: LdapAuthenticationProviderConfigurator
  * XNAT http://www.xnat.org
  * Copyright (c) 2005-2017, Washington University School of Medicine and Howard Hughes Medical Institute
  * All Rights Reserved
@@ -7,15 +7,16 @@
  * Released under the Simplified BSD.
  */
 
-package org.nrg.xnat.security.config;
+package org.nrg.xnat.auth.ldap.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.NotImplementedException;
 import org.nrg.xdat.preferences.SiteConfigPreferences;
 import org.nrg.xdat.services.XdatUserAuthService;
-import org.nrg.xnat.security.XnatLdapAuthoritiesPopulator;
-import org.nrg.xnat.security.XnatLdapUserDetailsMapper;
-import org.nrg.xnat.security.provider.XnatLdapAuthenticationProvider;
+import org.nrg.xnat.auth.ldap.XnatLdapAuthoritiesPopulator;
+import org.nrg.xnat.auth.ldap.XnatLdapUserDetailsMapper;
+import org.nrg.xnat.security.config.AbstractAuthenticationProviderConfigurator;
+import org.nrg.xnat.auth.ldap.provider.XnatLdapAuthenticationProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.ldap.DefaultSpringSecurityContextSource;

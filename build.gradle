@@ -9,7 +9,7 @@
 
 buildscript {
     ext {
-        vXnat = '1.7.4-SNAPSHOT'
+        vXnat = '1.7.5-SNAPSHOT'
     }
     repositories {
         mavenLocal()
@@ -30,6 +30,7 @@ buildscript {
         classpath "org.nrg.xnat.build:xnat-data-builder:${vXnat}"
         classpath "io.spring.gradle:dependency-management-plugin:1.0.3.RELEASE"
         classpath "gradle.plugin.com.palantir.gradle.gitversion:gradle-git-version:0.8.0"
+        classpath "io.franzbecker:gradle-lombok:1.10"
     }
 }
 
@@ -37,6 +38,7 @@ group 'org.nrg.xnat.auth'
 version '1.0.0-SNAPSHOT'
 
 apply plugin: 'io.spring.dependency-management'
+apply plugin: 'io.franzbecker.gradle-lombok'
 apply plugin: 'groovy'
 apply plugin: 'java'
 apply plugin: 'application'
@@ -83,9 +85,6 @@ dependencies {
     implementation("org.nrg.xdat:core") {
         transitive = false
     }
-    implementation("org.nrg.xdat:core") {
-        transitive = false
-    }
     implementation("org.nrg:prefs") {
         transitive = false
     }
@@ -97,7 +96,6 @@ dependencies {
     implementation "org.springframework:spring-web"
 
     implementation "org.apache.commons:commons-lang3"
-    implementation "org.projectlombok:lombok"
     implementation "org.hibernate.javax.persistence:hibernate-jpa-2.1-api"
     implementation "org.slf4j:slf4j-api"
     implementation "log4j:log4j"
