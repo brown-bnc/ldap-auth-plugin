@@ -10,6 +10,7 @@
 package org.nrg.xnat.auth.ldap.provider;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.nrg.xdat.XDAT;
 import org.nrg.xdat.services.XdatUserAuthService;
 import org.nrg.xft.security.UserI;
@@ -128,12 +129,15 @@ public class XnatLdapAuthenticationProvider extends LdapAuthenticationProvider i
      */
     @Override
     public boolean supports(final Authentication authentication) {
-        return false;
+        return supports(authentication.getClass()) &&
+               authentication instanceof XnatLdapUsernamePasswordAuthenticationToken &&
+               StringUtils.equals(getProviderId(), ((XnatLdapUsernamePasswordAuthenticationToken) authentication).getProviderId());
     }
 
     /**
      * Indicates whether the provider should be visible to and selectable by users. <b>false</b> usually indicates an
-     * internal authentication provider, e.g. token authentication. The LDAP authentication provider is visible by default.
+     * internal authentication provider, e.g. token authentication. The LDAP authentication provider is visible by
+     * default.
      *
      * @return <b>true</b> if the provider should be visible to and usable by users.
      */
