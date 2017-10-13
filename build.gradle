@@ -97,6 +97,7 @@ dependencies {
 
     implementation "org.apache.commons:commons-lang3"
     implementation "org.hibernate.javax.persistence:hibernate-jpa-2.1-api"
+    implementation "com.google.guava:guava"
     implementation "org.slf4j:slf4j-api"
     implementation "log4j:log4j"
 
@@ -117,7 +118,7 @@ if (hasProperty("rt.17.jar")) {
         tasks.withType(JavaCompile) { task ->
             task.options.fork = true
             task.options.compilerArgs << "-XDignore.symbol.file"
-            task.options.bootClasspath = rt17jar
+            task.options.bootClasspath = rt17jar as String
         }
     }
 } else {
@@ -188,10 +189,6 @@ publishing.publications {
             license.appendNode('distribution', 'repo')
 
             root.appendNode('developers').with {
-                def drm = appendNode('developer')
-                drm.appendNode('id', 'dmaffitt')
-                drm.appendNode('name', 'Dave Maffitt')
-                drm.appendNode('email', 'dave.maffitt@wustl.edu')
                 def rherrick = appendNode('developer')
                 rherrick.appendNode('id', 'rherrick')
                 rherrick.appendNode('name', 'Rick Herrick')
