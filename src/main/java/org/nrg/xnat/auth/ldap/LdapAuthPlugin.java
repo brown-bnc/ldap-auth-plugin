@@ -8,8 +8,10 @@ import org.springframework.context.annotation.Bean;
 
 @XnatPlugin(value = "xnat-ldap-auth-plugin", name = "XNAT LDAP Authentication Provider Plugin")
 public class LdapAuthPlugin {
+    /*
     @Bean
     public LdapAuthenticationProviderConfigurator ldapConfigurator(final XdatUserAuthService service, final SiteConfigPreferences preferences) {
         return new LdapAuthenticationProviderConfigurator(service, preferences);
     }
+    */
 }

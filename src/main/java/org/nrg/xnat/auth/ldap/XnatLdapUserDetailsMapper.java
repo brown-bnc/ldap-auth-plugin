@@ -10,32 +10,25 @@
 package org.nrg.xnat.auth.ldap;
 
 import lombok.extern.slf4j.Slf4j;
-import org.nrg.framework.services.ContextService;
 import org.nrg.xdat.XDAT;
-import org.nrg.xdat.preferences.SiteConfigPreferences;
 import org.nrg.xdat.security.helpers.Users;
 import org.nrg.xdat.services.XdatUserAuthService;
 import org.nrg.xft.security.UserI;
 import org.nrg.xnat.security.exceptions.NewAutoAccountNotAutoEnabledException;
+import org.springframework.ldap.core.DirContextAdapter;
 import org.springframework.ldap.core.DirContextOperations;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.ldap.userdetails.LdapAuthoritiesPopulator;
 import org.springframework.security.ldap.userdetails.LdapUserDetailsMapper;
 import org.springframework.util.Assert;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
-public class XnatLdapUserDetailsMapper extends LdapUserDetailsMapper {
-
-    public static final String PROPERTY_PREFIX = "attributes.";
-    public static final String PROPERTY_EMAIL  = PROPERTY_PREFIX + "email";
-    public static final String PROPERTY_FIRST  = PROPERTY_PREFIX + "firstname";
-    public static final String PROPERTY_LAST   = PROPERTY_PREFIX + "lastname";
-
-    public XnatLdapUserDetailsMapper(final String authMethodId, final Map<String, String> properties, final XdatUserAuthService userAuthService, final SiteConfigPreferences preferences) {
+public class XnatLdapUserDetailsMapper extends LdapUserDetailsMapper implements LdapAuthoritiesPopulator {
+    public XnatLdapUserDetailsMapper(final String authMethodId, final Map<String, String> properties, final XdatUserAuthService userAuthService) {
         super();
         Assert.hasText(authMethodId, "You must provide an authentication method ID.");
         Assert.notEmpty(properties, "You must provide the authentication provider properties.");
@@ -62,18 +55,15 @@ public class XnatLdapUserDetailsMapper extends LdapUserDetailsMapper {
             _properties = properties;
         }
         _userAuthService = userAuthService;
-        _preferences = preferences;
     }
 
     @Override
-    public UserI mapUserFromContext(DirContextOperations ctx, String username, final Collection<? extends GrantedAuthority> authorities) {
-        UserDetails user = super.mapUserFromContext(ctx, username, authorities);
+    public UserI mapUserFromContext(final DirContextOperations context, final String username, final Collection<? extends GrantedAuthority> authorities) {
+        final String email     = (String) context.getObjectAttribute(_properties.get(PROPERTY_EMAIL));
+        final String firstName = (String) context.getObjectAttribute(_properties.get(PROPERTY_FIRST));
+        final String lastName  = (String) context.getObjectAttribute(_properties.get(PROPERTY_LAST));
 
-        String email = (String) ctx.getObjectAttribute(_properties.get(PROPERTY_EMAIL));
-        String firstname = (String) ctx.getObjectAttribute(_properties.get(PROPERTY_FIRST));
-        String lastname = (String) ctx.getObjectAttribute(_properties.get(PROPERTY_LAST));
-
-        UserI userDetails = ContextService.getInstance().getBean(XdatUserAuthService.class).getUserDetailsByNameAndAuth(user.getUsername(), XdatUserAuthService.LDAP, _authMethodId, email, lastname, firstname);
+        UserI userDetails = _userAuthService.getUserDetailsByNameAndAuth(username, XdatUserAuthService.LDAP, _authMethodId, email, lastName, firstName);
 
         try {
             final UserI xdatUser = Users.getUser(userDetails.getUsername());
@@ -93,8 +83,23 @@ public class XnatLdapUserDetailsMapper extends LdapUserDetailsMapper {
         }
     }
 
-    private final XdatUserAuthService   _userAuthService;
-    private final SiteConfigPreferences _preferences;
-    private final String                _authMethodId;
-    private final Map<String, String>   _properties;
+    @Override
+    public void mapUserToContext(final UserDetails user, final DirContextAdapter contextAdapter) {
+        throw new UnsupportedOperationException("LdapUserDetailsMapper only supports reading from a context.");
+    }
+
+    @Override
+    public Collection<GrantedAuthority> getGrantedAuthorities(final DirContextOperations userData, final String username) {
+        return ROLE_USER;
+    }
+
+    private static final List<GrantedAuthority> ROLE_USER       = Collections.singletonList((GrantedAuthority) new SimpleGrantedAuthority("ROLE_USER"));
+    private static final String                 PROPERTY_PREFIX = "attributes.";
+    private static final String                 PROPERTY_EMAIL  = PROPERTY_PREFIX + "email";
+    private static final String                 PROPERTY_FIRST  = PROPERTY_PREFIX + "firstname";
+    private static final String                 PROPERTY_LAST   = PROPERTY_PREFIX + "lastname";
+
+    private final XdatUserAuthService _userAuthService;
+    private final String              _authMethodId;
+    private final Map<String, String> _properties;
 }

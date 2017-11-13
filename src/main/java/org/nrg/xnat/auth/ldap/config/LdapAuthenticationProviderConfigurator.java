@@ -13,9 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.NotImplementedException;
 import org.nrg.xdat.preferences.SiteConfigPreferences;
 import org.nrg.xdat.services.XdatUserAuthService;
-import org.nrg.xnat.auth.ldap.XnatLdapAuthoritiesPopulator;
 import org.nrg.xnat.auth.ldap.XnatLdapUserDetailsMapper;
-import org.nrg.xnat.security.config.AbstractAuthenticationProviderConfigurator;
 import org.nrg.xnat.auth.ldap.provider.XnatLdapAuthenticationProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -28,31 +26,31 @@ import java.util.List;
 import java.util.Map;
 
 @Slf4j
-public class LdapAuthenticationProviderConfigurator extends AbstractAuthenticationProviderConfigurator {
+public class LdapAuthenticationProviderConfigurator { // extends AbstractAuthenticationProviderConfigurator {
     @Autowired
     public LdapAuthenticationProviderConfigurator(final XdatUserAuthService userAuthService, final SiteConfigPreferences preferences) {
         super();
-        setConfiguratorId("ldap");
+        // setConfiguratorId("ldap");
         _userAuthService = userAuthService;
         _preferences = preferences;
     }
 
-    @Override
+    // @Override
     public List<AuthenticationProvider> getAuthenticationProviders(String id, String name) {
         throw new NotImplementedException("You must provide LDAP properties in order to configure an LDAP connection.");
     }
 
-    @Override
+    // @Override
     public List<AuthenticationProvider> getAuthenticationProviders(String id, String name, Map<String, String> properties) {
         try {
-            XnatLdapAuthenticationProvider ldapAuthProvider = new XnatLdapAuthenticationProvider(getBindAuthenticator(properties, getLdapContextSource(properties)), new XnatLdapAuthoritiesPopulator());
-            ldapAuthProvider.setUserDetailsContextMapper(new XnatLdapUserDetailsMapper(id, properties, _userAuthService, _preferences));
-            ldapAuthProvider.setName(name);
-            ldapAuthProvider.setProviderId(id);
+            final XnatLdapAuthenticationProvider provider = new XnatLdapAuthenticationProvider(getBindAuthenticator(properties, getLdapContextSource(properties)));
+            provider.setUserDetailsContextMapper(new XnatLdapUserDetailsMapper(id, properties, _userAuthService));
+            provider.setName(name);
+            provider.setProviderId(id);
             if (properties.get("order") != null) {
-                ldapAuthProvider.setOrder(Integer.parseInt(properties.get("order")));
+                provider.setOrder(Integer.parseInt(properties.get("order")));
             }
-            return Arrays.asList(new AuthenticationProvider[] { ldapAuthProvider });
+            return Arrays.asList(new AuthenticationProvider[] { provider });
         } catch (Exception exception) {
             log.error("Something went wrong when configuring the LDAP authentication provider", exception);
             return null;
@@ -65,7 +63,7 @@ public class LdapAuthenticationProviderConfigurator extends AbstractAuthenticati
         return ldapBindAuthenticator;
     }
 
-    private DefaultSpringSecurityContextSource getLdapContextSource(final Map<String, String> properties) throws Exception {
+    private DefaultSpringSecurityContextSource getLdapContextSource(final Map<String, String> properties) {
         return new DefaultSpringSecurityContextSource(properties.get("address")) {{
             setUserDn(properties.get("userdn"));
             setPassword(properties.get("password"));
