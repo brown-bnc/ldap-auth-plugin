@@ -26,16 +26,21 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.ldap.authentication.LdapAuthenticationProvider;
 import org.springframework.security.ldap.authentication.LdapAuthenticator;
 import org.springframework.security.ldap.userdetails.LdapAuthoritiesPopulator;
+import org.springframework.security.ldap.userdetails.UserDetailsContextMapper;
 import org.springframework.stereotype.Component;
 
 @Component
 @Slf4j
 public class XnatLdapAuthenticationProvider extends LdapAuthenticationProvider implements XnatAuthenticationProvider {
     @SuppressWarnings("unused")
-    public XnatLdapAuthenticationProvider(final LdapAuthenticator authenticator) {
+    public XnatLdapAuthenticationProvider(final String providerId, final String displayName, final LdapAuthenticator authenticator, final UserDetailsContextMapper contextMapper) {
         super(authenticator);
+        setProviderId(providerId);
+        setName(displayName);
+        setUserDetailsContextMapper(contextMapper);
     }
 
+    @SuppressWarnings("unused")
     public XnatLdapAuthenticationProvider(final LdapAuthenticator authenticator, final LdapAuthoritiesPopulator authoritiesPopulator) {
         super(authenticator, authoritiesPopulator);
     }

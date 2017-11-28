@@ -11,6 +11,7 @@ package org.nrg.xnat.auth.ldap;
 
 import lombok.extern.slf4j.Slf4j;
 import org.nrg.xdat.XDAT;
+import org.nrg.xdat.preferences.SiteConfigPreferences;
 import org.nrg.xdat.security.helpers.Users;
 import org.nrg.xdat.services.XdatUserAuthService;
 import org.nrg.xft.security.UserI;
@@ -24,11 +25,14 @@ import org.springframework.security.ldap.userdetails.LdapAuthoritiesPopulator;
 import org.springframework.security.ldap.userdetails.LdapUserDetailsMapper;
 import org.springframework.util.Assert;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Properties;
 
 @Slf4j
 public class XnatLdapUserDetailsMapper extends LdapUserDetailsMapper implements LdapAuthoritiesPopulator {
-    public XnatLdapUserDetailsMapper(final String authMethodId, final Map<String, String> properties, final XdatUserAuthService userAuthService) {
+    public XnatLdapUserDetailsMapper(final String authMethodId, final Properties properties, final XdatUserAuthService userAuthService, final SiteConfigPreferences preferences) {
         super();
         Assert.hasText(authMethodId, "You must provide an authentication method ID.");
         Assert.notEmpty(properties, "You must provide the authentication provider properties.");
@@ -37,37 +41,38 @@ public class XnatLdapUserDetailsMapper extends LdapUserDetailsMapper implements 
         }
         _authMethodId = authMethodId;
         if (properties == null || properties.size() == 0) {
-            _properties = new HashMap<String, String>(3) {{
-                put(PROPERTY_EMAIL, "mail");
-                put(PROPERTY_FIRST, "givenName");
-                put(PROPERTY_LAST, "sn");
+            _properties = new Properties() {{
+                setProperty(PROPERTY_EMAIL, "mail");
+                setProperty(PROPERTY_FIRST, "givenName");
+                setProperty(PROPERTY_LAST, "sn");
             }};
         } else {
             if (!properties.containsKey(PROPERTY_EMAIL)) {
-                properties.put(PROPERTY_EMAIL, "mail");
+                properties.setProperty(PROPERTY_EMAIL, "mail");
             }
             if (!properties.containsKey(PROPERTY_FIRST)) {
-                properties.put(PROPERTY_FIRST, "givenName");
+                properties.setProperty(PROPERTY_FIRST, "givenName");
             }
             if (!properties.containsKey(PROPERTY_LAST)) {
-                properties.put(PROPERTY_LAST, "sn");
+                properties.setProperty(PROPERTY_LAST, "sn");
             }
             _properties = properties;
         }
         _userAuthService = userAuthService;
+        _preferences = preferences;
     }
 
     @Override
     public UserI mapUserFromContext(final DirContextOperations context, final String username, final Collection<? extends GrantedAuthority> authorities) {
-        final String email     = (String) context.getObjectAttribute(_properties.get(PROPERTY_EMAIL));
-        final String firstName = (String) context.getObjectAttribute(_properties.get(PROPERTY_FIRST));
-        final String lastName  = (String) context.getObjectAttribute(_properties.get(PROPERTY_LAST));
+        final String email     = (String) context.getObjectAttribute(_properties.getProperty(PROPERTY_EMAIL));
+        final String firstName = (String) context.getObjectAttribute(_properties.getProperty(PROPERTY_FIRST));
+        final String lastName  = (String) context.getObjectAttribute(_properties.getProperty(PROPERTY_LAST));
 
         UserI userDetails = _userAuthService.getUserDetailsByNameAndAuth(username, XdatUserAuthService.LDAP, _authMethodId, email, lastName, firstName);
 
         try {
             final UserI xdatUser = Users.getUser(userDetails.getUsername());
-            if ((!XDAT.getSiteConfigPreferences().getEmailVerification() || xdatUser.isVerified()) && userDetails.getAuthorization().isEnabled()) {
+            if ((!_preferences.getEmailVerification() || xdatUser.isVerified()) && userDetails.getAuthorization().isEnabled()) {
                 return userDetails;
             } else {
                 throw new NewAutoAccountNotAutoEnabledException(
@@ -99,7 +104,8 @@ public class XnatLdapUserDetailsMapper extends LdapUserDetailsMapper implements 
     private static final String                 PROPERTY_FIRST  = PROPERTY_PREFIX + "firstname";
     private static final String                 PROPERTY_LAST   = PROPERTY_PREFIX + "lastname";
 
-    private final XdatUserAuthService _userAuthService;
-    private final String              _authMethodId;
-    private final Map<String, String> _properties;
+    private final XdatUserAuthService   _userAuthService;
+    private final SiteConfigPreferences _preferences;
+    private final String                _authMethodId;
+    private final Properties            _properties;
 }
