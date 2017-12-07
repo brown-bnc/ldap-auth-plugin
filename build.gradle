@@ -71,6 +71,8 @@ repositories {
 sourceCompatibility = 1.7
 targetCompatibility = 1.7
 
+mainClassName = "ValidateLdap"
+
 dependencyManagement.imports {
     mavenBom "org.nrg:parent:${vXnat}"
 }
@@ -92,8 +94,9 @@ dependencies {
         transitive = false
     }
 
-    implementation "org.springframework.security:spring-security-ldap"
     implementation "org.springframework:spring-web"
+    implementation "org.springframework.security:spring-security-config"
+    implementation "org.springframework.security:spring-security-ldap"
 
     implementation "org.apache.commons:commons-lang3"
     implementation "org.hibernate.javax.persistence:hibernate-jpa-2.1-api"
@@ -101,6 +104,12 @@ dependencies {
     implementation "org.slf4j:slf4j-api"
     implementation "log4j:log4j"
 
+    implementation "org.springframework.security:spring-security-web"
+    implementation "javax.servlet:javax.servlet-api"
+
+    implementation localGroovy()
+
+    compileOnly "org.apache.ivy:ivy:2.4.0"
     compileOnly("stratum:stratum") {
         transitive = false
     }

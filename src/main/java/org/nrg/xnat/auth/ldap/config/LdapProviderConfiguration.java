@@ -8,6 +8,7 @@ import org.nrg.xnat.auth.ldap.XnatLdapUserDetailsMapper;
 import org.nrg.xnat.auth.ldap.provider.XnatLdapAuthenticationProvider;
 import org.nrg.xnat.security.provider.AuthenticationProviderConfigurationLocator;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.ldap.DefaultSpringSecurityContextSource;
@@ -18,18 +19,19 @@ import java.util.Map;
 import java.util.Properties;
 
 // TODO: It's probably not necessary to have this separated from the LdapAuthPlugin configuration.
-@Configuration
-public class LdapProviderConfiguration extends AbstractConfigurableBeanConfiguration<XnatLdapAuthenticationProvider> {
+// @Configuration
+public class LdapProviderConfiguration { // extends AbstractConfigurableBeanConfiguration<XnatLdapAuthenticationProvider> {
     @Autowired
     public LdapProviderConfiguration(final SiteConfigPreferences preferences, final XdatUserAuthService userAuthService, final AuthenticationProviderConfigurationLocator locator) {
-        super(AuthenticationProvider.class);
+        // super(AuthenticationProvider.class);
         _preferences = preferences;
         _userAuthService = userAuthService;
         _ldapProviderDefinitions = locator.getProviderDefinitions("ldap");
     }
 
+    /*
     @Override
-    public void setBeanInitializationParameters() {
+    public void setBeanInitializationParameters(final BeanDefinitionRegistry registry) {
         for (final String providerId : _ldapProviderDefinitions.keySet()) {
             final Properties properties = _ldapProviderDefinitions.get(providerId);
             if (StringUtils.isNotBlank(properties.getProperty("order"))) {
@@ -40,6 +42,7 @@ public class LdapProviderConfiguration extends AbstractConfigurableBeanConfigura
             }
         }
     }
+    */
 
     private BindAuthenticator getBindAuthenticator(final Properties properties, final DefaultSpringSecurityContextSource ldapServer) {
         final BindAuthenticator ldapBindAuthenticator = new BindAuthenticator(ldapServer);
@@ -58,4 +61,5 @@ public class LdapProviderConfiguration extends AbstractConfigurableBeanConfigura
     private final SiteConfigPreferences   _preferences;
     private final XdatUserAuthService     _userAuthService;
     private final Map<String, Properties> _ldapProviderDefinitions;
+
 }

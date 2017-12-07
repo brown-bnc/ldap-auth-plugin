@@ -40,6 +40,10 @@ public class XnatLdapAuthenticationProvider extends LdapAuthenticationProvider i
         setUserDetailsContextMapper(contextMapper);
     }
 
+    public XnatLdapAuthenticationProvider(final LdapAuthenticator authenticator) {
+        super(authenticator);
+    }
+
     @SuppressWarnings("unused")
     public XnatLdapAuthenticationProvider(final LdapAuthenticator authenticator, final LdapAuthoritiesPopulator authoritiesPopulator) {
         super(authenticator, authoritiesPopulator);

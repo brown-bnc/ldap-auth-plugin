@@ -10,7 +10,6 @@
 package org.nrg.xnat.auth.ldap;
 
 import lombok.extern.slf4j.Slf4j;
-import org.nrg.xdat.XDAT;
 import org.nrg.xdat.preferences.SiteConfigPreferences;
 import org.nrg.xdat.security.helpers.Users;
 import org.nrg.xdat.services.XdatUserAuthService;
@@ -23,6 +22,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.ldap.userdetails.LdapAuthoritiesPopulator;
 import org.springframework.security.ldap.userdetails.LdapUserDetailsMapper;
+import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 
 import java.util.Collection;
@@ -30,16 +30,19 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
+@Component
 @Slf4j
 public class XnatLdapUserDetailsMapper extends LdapUserDetailsMapper implements LdapAuthoritiesPopulator {
-    public XnatLdapUserDetailsMapper(final String authMethodId, final Properties properties, final XdatUserAuthService userAuthService, final SiteConfigPreferences preferences) {
+    public XnatLdapUserDetailsMapper(final String providerId, final XdatUserAuthService userAuthService, final SiteConfigPreferences preferences, final Properties properties) {
         super();
-        Assert.hasText(authMethodId, "You must provide an authentication method ID.");
+        Assert.hasText(providerId, "You must provide an authentication provider ID.");
         Assert.notEmpty(properties, "You must provide the authentication provider properties.");
-        if (log.isInfoEnabled()) {
-            log.info("Creating user details mapper with the auth method ID [" + authMethodId + "] and " + (properties != null && properties.size() > 0 ? "mapping properties: " + properties.toString() : "default mapping properties"));
-        }
-        _authMethodId = authMethodId;
+        log.info("Creating user details mapper with the provider ID [{}] and {}", providerId, (properties != null && properties.size() > 0 ? "mapping properties: " + properties.toString() : "default mapping properties"));
+
+        _providerId = providerId;
+        _userAuthService = userAuthService;
+        _preferences = preferences;
+
         if (properties == null || properties.size() == 0) {
             _properties = new Properties() {{
                 setProperty(PROPERTY_EMAIL, "mail");
@@ -58,8 +61,6 @@ public class XnatLdapUserDetailsMapper extends LdapUserDetailsMapper implements 
             }
             _properties = properties;
         }
-        _userAuthService = userAuthService;
-        _preferences = preferences;
     }
 
     @Override
@@ -68,7 +69,7 @@ public class XnatLdapUserDetailsMapper extends LdapUserDetailsMapper implements 
         final String firstName = (String) context.getObjectAttribute(_properties.getProperty(PROPERTY_FIRST));
         final String lastName  = (String) context.getObjectAttribute(_properties.getProperty(PROPERTY_LAST));
 
-        UserI userDetails = _userAuthService.getUserDetailsByNameAndAuth(username, XdatUserAuthService.LDAP, _authMethodId, email, lastName, firstName);
+        UserI userDetails = _userAuthService.getUserDetailsByNameAndAuth(username, XdatUserAuthService.LDAP, _providerId, email, lastName, firstName);
 
         try {
             final UserI xdatUser = Users.getUser(userDetails.getUsername());
@@ -104,8 +105,8 @@ public class XnatLdapUserDetailsMapper extends LdapUserDetailsMapper implements 
     private static final String                 PROPERTY_FIRST  = PROPERTY_PREFIX + "firstname";
     private static final String                 PROPERTY_LAST   = PROPERTY_PREFIX + "lastname";
 
+    private final String                _providerId;
     private final XdatUserAuthService   _userAuthService;
     private final SiteConfigPreferences _preferences;
-    private final String                _authMethodId;
     private final Properties            _properties;
 }
