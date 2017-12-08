@@ -42,15 +42,18 @@ import java.util.*;
 public class XnatMulticonfigLdapAuthenticationProvider extends XnatLdapAuthenticationProvider implements XnatMulticonfigAuthenticationProvider {
     @Autowired
     public XnatMulticonfigLdapAuthenticationProvider(final AuthenticationProviderConfigurationLocator locator, final XdatUserAuthService userAuthService, final SiteConfigPreferences preferences) {
-        super(getPrimaryAuthenticator(locator.getProviderDefinitions(XdatUserAuthService.LDAP)));
+        this(locator.getProviderDefinitions(XdatUserAuthService.LDAP), userAuthService, preferences);
+    }
 
-        final Map<String, Properties> definitions    = locator.getProviderDefinitions(XdatUserAuthService.LDAP);
-        final List<Properties>        configurations = getOrderedConfigurations(definitions);
+    public XnatMulticonfigLdapAuthenticationProvider(final Map<String, Properties> definitions, final XdatUserAuthService userAuthService, final SiteConfigPreferences preferences) {
+        super(getPrimaryAuthenticator(definitions));
+
+        final List<Properties> configurations = getOrderedConfigurations(definitions);
 
         // We've already initialized the super class with the primary bind authenticator, now we just need to
         // set the remaining provider properties for this instance. All of the other providers go into the map.
-        final ProviderAttributes primary = new ProviderAttributes(configurations.remove(0));
-        final String primaryProviderId = primary.getProviderId();
+        final ProviderAttributes primary           = new ProviderAttributes(configurations.remove(0));
+        final String             primaryProviderId = primary.getProviderId();
 
         setProviderId(primaryProviderId);
         setName(primary.getName());

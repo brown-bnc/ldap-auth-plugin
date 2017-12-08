@@ -1,27 +1,22 @@
 package org.nrg.xnat.auth.ldap;
 
+import com.google.common.base.Joiner;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.nrg.framework.annotations.XnatPlugin;
-import org.nrg.framework.beans.AbstractConfigurableBeanConfiguration;
 import org.nrg.xdat.preferences.SiteConfigPreferences;
 import org.nrg.xdat.services.XdatUserAuthService;
-import org.nrg.xnat.auth.ldap.provider.XnatLdapAuthenticationProvider;
-import org.nrg.xnat.security.BaseXnatSecurityExtension;
-import org.nrg.xnat.security.XnatSecurityExtension;
+import org.nrg.xnat.auth.ldap.provider.XnatMulticonfigLdapAuthenticationProvider;
 import org.nrg.xnat.security.provider.AuthenticationProviderConfigurationLocator;
+import org.springframework.beans.factory.BeanFactoryUtils;
+import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.annotation.Bean;
-import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.config.annotation.ObjectPostProcessor;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.ldap.DefaultSpringSecurityContextSource;
-import org.springframework.security.ldap.authentication.BindAuthenticator;
+import org.springframework.context.annotation.ConditionContext;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.context.annotation.ConfigurationCondition;
+import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.security.ldap.authentication.LdapAuthenticationProvider;
-import org.springframework.security.ldap.search.FilterBasedLdapUserSearch;
-import org.springframework.security.web.access.intercept.FilterSecurityInterceptor;
+import org.springframework.util.ObjectUtils;
 
 import java.util.Collections;
 import java.util.Map;
@@ -29,13 +24,7 @@ import java.util.Properties;
 
 @XnatPlugin(value = "xnat-ldap-auth-plugin", name = "XNAT LDAP Authentication Provider Plugin")
 @Slf4j
-public class LdapAuthPlugin { // extends AbstractConfigurableBeanConfiguration<XnatLdapAuthenticationProvider> {
-    /*
-    public LdapAuthPlugin() {
-        super(AuthenticationProvider.class);
-    }
-    */
-
+public class LdapAuthPlugin {
     @Autowired
     public void setXdatUserAuthService(final XdatUserAuthService userAuthService) {
         _userAuthService = userAuthService;
@@ -52,61 +41,34 @@ public class LdapAuthPlugin { // extends AbstractConfigurableBeanConfiguration<X
         _ldapProviderDefinitions = definitions != null ? definitions : Collections.<String, Properties>emptyMap();
     }
 
-    /*
-    @Override
-    public void setBeanInitializationParameters(final BeanDefinitionRegistry registry) {
-        for (final String providerId : _ldapProviderDefinitions.keySet()) {
-            final Properties                properties = _ldapProviderDefinitions.get(providerId);
-            final XnatLdapUserDetailsMapper mapper     = new XnatLdapUserDetailsMapper(providerId, _userAuthService, _preferences, properties);
-
-            if (StringUtils.isNotBlank(properties.getProperty("order"))) {
-                final int order = Integer.parseInt(properties.getProperty("order"));
-                addBeanInitializationParameters(providerId, properties.getProperty("name"), mapper, getBindAuthenticator(properties, getLdapContextSource(properties)), order);
-            } else {
-                addBeanInitializationParameters(providerId, properties.getProperty("name"), mapper, getBindAuthenticator(properties, getLdapContextSource(properties)));
-            }
-        }
-    }
-    */
-
     @Bean
-    public XnatSecurityExtension ldapSecurityExtension() {
-        return new BaseXnatSecurityExtension() {
-            @Override
-            public String getAuthMethod() {
-                return XdatUserAuthService.LDAP;
+    @Conditional(LdapAuthProvidersDefined.class)
+    public LdapAuthenticationProvider multiconfigLdapAuthenticationProvider() {
+        return new XnatMulticonfigLdapAuthenticationProvider(_ldapProviderDefinitions, _userAuthService, _preferences);
+    }
+
+    class LdapAuthProvidersDefined implements ConfigurationCondition {
+        @Override
+        public ConfigurationPhase getConfigurationPhase() {
+            return ConfigurationPhase.REGISTER_BEAN;
+        }
+
+        @Override
+        public boolean matches(final ConditionContext context, final AnnotatedTypeMetadata metadata) {
+            final ListableBeanFactory factory = context.getBeanFactory();
+            final AuthenticationProviderConfigurationLocator locator = BeanFactoryUtils.beanOfType(factory, AuthenticationProviderConfigurationLocator.class);
+            if (ObjectUtils.isEmpty(locator)) {
+                log.debug("Didn't find an auth provider configuration locator, nothing to do");
+                return false;
             }
-
-            @Override
-            public void configure(final HttpSecurity http) throws Exception {
-                http.authorizeRequests()
-                    .anyRequest().permitAll()
-                    .withObjectPostProcessor(new ObjectPostProcessor<FilterSecurityInterceptor>() {
-                        public <O extends FilterSecurityInterceptor> O postProcess(final O interceptor) {
-                            interceptor.setPublishAuthorizationSuccess(true);
-                            return interceptor;
-                        }
-                    });
-
+            final Map<String, Properties> definitions = locator.getProviderDefinitions(XdatUserAuthService.LDAP);
+            if (ObjectUtils.isEmpty(locator)) {
+                log.debug("Found an auth provider configuration locator, but it doesn't have any LDAP providers, nothing to do");
+                return false;
             }
-
-            @Override
-            public void configure(final AuthenticationManagerBuilder builder) throws Exception {
-                builder.ldapAuthentication().withObjectPostProcessor(new ObjectPostProcessor<LdapAuthenticationProvider>() {
-                    @Override
-                    public <O extends LdapAuthenticationProvider> O postProcess(final O provider) {
-                        return provider;
-                    }
-                });
-//                type=ldap
-//                address=ldap://ldap.xnat.org/dc=xnat,dc=org
-//                userdn=cn=admin,dc=xnat,dc=org
-//                password=admin
-//                search.base=ou=Users,dc=xnat,dc=org
-//                search.filter=(uid={0})
-
-            }
-        };
+            log.debug("Found locator bean with {} LDAP providers defined: {}", definitions.size(), Joiner.on(", ").join(definitions.keySet()));
+            return true;
+        }
     }
 
     private XdatUserAuthService     _userAuthService;

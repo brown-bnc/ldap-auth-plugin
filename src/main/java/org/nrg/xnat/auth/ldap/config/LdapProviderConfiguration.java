@@ -1,16 +1,9 @@
 package org.nrg.xnat.auth.ldap.config;
 
-import org.apache.commons.lang3.StringUtils;
-import org.nrg.framework.beans.AbstractConfigurableBeanConfiguration;
 import org.nrg.xdat.preferences.SiteConfigPreferences;
 import org.nrg.xdat.services.XdatUserAuthService;
-import org.nrg.xnat.auth.ldap.XnatLdapUserDetailsMapper;
-import org.nrg.xnat.auth.ldap.provider.XnatLdapAuthenticationProvider;
 import org.nrg.xnat.security.provider.AuthenticationProviderConfigurationLocator;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.ldap.DefaultSpringSecurityContextSource;
 import org.springframework.security.ldap.authentication.BindAuthenticator;
 import org.springframework.security.ldap.search.FilterBasedLdapUserSearch;
