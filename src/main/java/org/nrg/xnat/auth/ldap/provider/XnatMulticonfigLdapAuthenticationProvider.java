@@ -42,7 +42,7 @@ import java.util.*;
 public class XnatMulticonfigLdapAuthenticationProvider extends XnatLdapAuthenticationProvider implements XnatMulticonfigAuthenticationProvider {
     @Autowired
     public XnatMulticonfigLdapAuthenticationProvider(final AuthenticationProviderConfigurationLocator locator, final XdatUserAuthService userAuthService, final SiteConfigPreferences preferences) {
-        this(locator.getProviderDefinitions(XdatUserAuthService.LDAP), userAuthService, preferences);
+        this(locator.getProviderDefinitions(), userAuthService, preferences);
     }
 
     public XnatMulticonfigLdapAuthenticationProvider(final Map<String, Properties> definitions, final XdatUserAuthService userAuthService, final SiteConfigPreferences preferences) {
@@ -212,8 +212,8 @@ public class XnatMulticonfigLdapAuthenticationProvider extends XnatLdapAuthentic
         return getBindAuthenticator(getOrderedConfigurations(definitions).get(0));
     }
 
-    private static ArrayList<Properties> getOrderedConfigurations(final Map<String, Properties> definitions) {
-        final ArrayList<Properties> configurations = new ArrayList<>(definitions.values());
+    private static List<Properties> getOrderedConfigurations(final Map<String, Properties> definitions) {
+        final List<Properties> configurations = new ArrayList<>(definitions.values());
         Collections.sort(configurations, new Comparator<Properties>() {
             @Override
             public int compare(final Properties first, final Properties second) {

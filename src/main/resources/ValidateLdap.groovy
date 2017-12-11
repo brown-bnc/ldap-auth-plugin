@@ -10,14 +10,17 @@ import org.springframework.security.ldap.authentication.BindAuthenticator
 import org.springframework.security.ldap.authentication.LdapAuthenticationProvider
 import org.springframework.security.ldap.search.FilterBasedLdapUserSearch
 
-def propertiesFile = this.args.length == 0 ? "ldap.properties" : this.args[0].endsWith(".properties") ? this.args[0] : "${this.args[0]}.properties"
+String propertiesFile = this.args.length == 0 ? "ldap.properties" : this.args[0].endsWith(".properties") ? this.args[0] : "${this.args[0]}.properties"
 
 final Properties properties = new Properties()
 def file = new File(propertiesFile)
 if (file.exists()) {
+    println "Loading properties from ${file.path}"
     file.withInputStream {
         properties.load it
     }
+} else {
+    println "No properties file found, using default values"
 }
 
 def address = properties.getProperty "address", "ldap://ldap.xnat.org"
@@ -28,6 +31,16 @@ def searchFilter = properties.getProperty "search.filter", "(uid={0})"
 def username = properties.getProperty "user", "asmith"
 def password = properties.getProperty "pass", "password"
 
+println ""
+println "address:       ${address}"
+println "userdn:        ${userDn}"
+println "password:      ${bindingPassword}"
+println "search.base:   ${searchBase}"
+println "search.filter: ${searchFilter}"
+println "user:          ${username}"
+println "pass:          ${password}"
+println ""
+
 final def contextSource = new DefaultSpringSecurityContextSource(address)
 contextSource.setUserDn userDn
 contextSource.setPassword bindingPassword
@@ -36,7 +49,9 @@ contextSource.afterPropertiesSet()
 def atoms = userDn.split ",", 2
 
 println "Validating the binding user account"
-def bindingUserAuthenticated = BindAndAuthenticate(contextSource, atoms[1], "(${atoms[0]})", atoms[0], bindingPassword)
+def bindingSearchBase = atoms.length > 1 ? atoms[1] : ""
+def bindingUsername = atoms[0]
+def bindingUserAuthenticated = BindAndAuthenticate(contextSource, bindingSearchBase, "(${ bindingUsername})", bindingUsername, bindingPassword)
 
 if (bindingUserAuthenticated) {
     println "Binding user authenticated successfully, validating the user account ${username}"
