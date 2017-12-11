@@ -69,7 +69,7 @@ public class XnatLdapUserDetailsMapper extends LdapUserDetailsMapper implements 
         final String firstName = (String) context.getObjectAttribute(_properties.getProperty(PROPERTY_FIRST));
         final String lastName  = (String) context.getObjectAttribute(_properties.getProperty(PROPERTY_LAST));
 
-        UserI userDetails = _userAuthService.getUserDetailsByNameAndAuth(username, XdatUserAuthService.LDAP, _providerId, email, lastName, firstName);
+        final UserI userDetails = _userAuthService.getUserDetailsByNameAndAuth(username, XdatUserAuthService.LDAP, _providerId, email, lastName, firstName);
 
         try {
             final UserI xdatUser = Users.getUser(userDetails.getUsername());

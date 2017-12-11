@@ -59,6 +59,7 @@ public class XnatMulticonfigLdapAuthenticationProvider extends XnatLdapAuthentic
         setName(primary.getName());
         setVisible(primary.isVisible());
         setOrder(primary.getOrder());
+        setUserDetailsContextMapper(new XnatLdapUserDetailsMapper(primaryProviderId, userAuthService, preferences, primary.getProperties()));
 
         _providerIds.add(primaryProviderId);
         _providerAttributes.put(primaryProviderId, primary);
