@@ -5,6 +5,7 @@ import org.nrg.framework.annotations.XnatPlugin;
 import org.nrg.framework.configuration.ConfigPaths;
 import org.nrg.xdat.preferences.SiteConfigPreferences;
 import org.nrg.xdat.services.XdatUserAuthService;
+import org.nrg.xnat.auth.ldap.extensions.LdapSecurityExtension;
 import org.nrg.xnat.auth.ldap.provider.XnatMulticonfigLdapAuthenticationProvider;
 import org.nrg.xnat.security.provider.AuthenticationProviderConfigurationLocator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,9 +42,13 @@ public class LdapAuthPlugin {
     }
 
     @Bean
-    // @Conditional(LdapAuthProvidersDefinedCondition.class)
     public LdapAuthenticationProvider multiconfigLdapAuthenticationProvider() {
         return new XnatMulticonfigLdapAuthenticationProvider(ldapProviderConfigurationLocator(), _userAuthService, _preferences);
+    }
+
+    @Bean
+    public LdapSecurityExtension ldapSecurityExtension() {
+        return new LdapSecurityExtension();
     }
 
     private ConfigPaths           _configPaths;
