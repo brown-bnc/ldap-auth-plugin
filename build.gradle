@@ -72,8 +72,6 @@ repositories {
 sourceCompatibility = 1.7
 targetCompatibility = 1.7
 
-mainClassName = "ValidateLdap"
-
 dependencyManagement.imports {
     mavenBom "org.nrg:parent:${vXnat}"
 }
@@ -137,6 +135,7 @@ if (hasProperty("rt.17.jar")) {
 }
 
 jar {
+    baseName = "xnat-${project.name}"
     manifest {
         attributes 'Application-Name': 'XNAT LDAP Authentication Provider',
                 'Build-Date': new Date(),
