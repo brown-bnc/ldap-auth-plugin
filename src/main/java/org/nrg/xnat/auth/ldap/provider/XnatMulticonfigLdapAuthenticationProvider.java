@@ -11,7 +11,6 @@ package org.nrg.xnat.auth.ldap.provider;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.nrg.xdat.preferences.SiteConfigPreferences;
 import org.nrg.xdat.services.XdatUserAuthService;
 import org.nrg.xnat.auth.ldap.XnatLdapUserDetailsMapper;
@@ -32,6 +31,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.*;
 
+import static org.nrg.xdat.services.XdatUserAuthService.LDAP;
+
 /**
  * This class represents both an individual LDAP provider and, in the case where multiple LDAP configurations are provided
  * for a single deployment, an aggregator of LDAP providers. This differs from earlier releases of XNAT where multiple LDAP
@@ -42,17 +43,17 @@ import java.util.*;
 public class XnatMulticonfigLdapAuthenticationProvider extends XnatLdapAuthenticationProvider implements XnatMulticonfigAuthenticationProvider {
     @Autowired
     public XnatMulticonfigLdapAuthenticationProvider(final AuthenticationProviderConfigurationLocator locator, final XdatUserAuthService userAuthService, final SiteConfigPreferences preferences) {
-        this(locator.getProviderDefinitions(), userAuthService, preferences);
+        this(locator.getProviderDefinitionsByType(LDAP), userAuthService, preferences);
     }
 
-    public XnatMulticonfigLdapAuthenticationProvider(final Map<String, Properties> definitions, final XdatUserAuthService userAuthService, final SiteConfigPreferences preferences) {
+    public XnatMulticonfigLdapAuthenticationProvider(final Map<String, ProviderAttributes> definitions, final XdatUserAuthService userAuthService, final SiteConfigPreferences preferences) {
         super(getPrimaryAuthenticator(definitions));
 
-        final List<Properties> configurations = getOrderedConfigurations(definitions);
+        final List<ProviderAttributes> configurations = getOrderedConfigurations(definitions);
 
         // We've already initialized the super class with the primary bind authenticator, now we just need to
         // set the remaining provider properties for this instance. All of the other providers go into the map.
-        final ProviderAttributes primary           = new ProviderAttributes(configurations.remove(0));
+        final ProviderAttributes primary           = configurations.remove(0);
         final String             primaryProviderId = primary.getProviderId();
 
         setProviderId(primaryProviderId);
@@ -64,13 +65,12 @@ public class XnatMulticonfigLdapAuthenticationProvider extends XnatLdapAuthentic
         _providerIds.add(primaryProviderId);
         _providerAttributes.put(primaryProviderId, primary);
 
-        for (final Properties configuration : configurations) {
-            final ProviderAttributes attributes = new ProviderAttributes(configuration);
-            final String             providerId = attributes.getProviderId();
+        for (final ProviderAttributes configuration : configurations) {
+            final String             providerId = configuration.getProviderId();
 
             _providerIds.add(providerId);
-            _providerAttributes.put(providerId, attributes);
-            _providers.put(providerId, new XnatLdapAuthenticationProvider(providerId, attributes.getName(), getBindAuthenticator(attributes.getProperties()), new XnatLdapUserDetailsMapper(providerId, userAuthService, preferences, attributes.getProperties())));
+            _providerAttributes.put(providerId, configuration);
+            _providers.put(providerId, new XnatLdapAuthenticationProvider(providerId, configuration.getName(), getBindAuthenticator(configuration), new XnatLdapUserDetailsMapper(providerId, userAuthService, preferences, configuration.getProperties())));
         }
     }
 
@@ -209,36 +209,24 @@ public class XnatMulticonfigLdapAuthenticationProvider extends XnatLdapAuthentic
         return getName();
     }
 
-    private static LdapAuthenticator getPrimaryAuthenticator(final Map<String, Properties> definitions) {
+    private static LdapAuthenticator getPrimaryAuthenticator(final Map<String, ProviderAttributes> definitions) {
         return getBindAuthenticator(getOrderedConfigurations(definitions).get(0));
     }
 
-    private static List<Properties> getOrderedConfigurations(final Map<String, Properties> definitions) {
-        final List<Properties> configurations = new ArrayList<>(definitions.values());
-        Collections.sort(configurations, new Comparator<Properties>() {
-            @Override
-            public int compare(final Properties first, final Properties second) {
-                final String orderFirst  = first.getProperty("order");
-                final String orderSecond = second.getProperty("order");
-                if (StringUtils.isAnyBlank(orderFirst, orderSecond)) {
-                    final boolean isFirstBlank  = StringUtils.isBlank(orderFirst);
-                    final boolean isSecondBlank = StringUtils.isBlank(orderSecond);
-                    return isFirstBlank && isSecondBlank ? 0 : isFirstBlank ? -1 : 1;
-                }
-                return NumberUtils.compare(Integer.parseInt(orderFirst), Integer.parseInt(orderSecond));
-            }
-        });
+    private static List<ProviderAttributes> getOrderedConfigurations(final Map<String, ProviderAttributes> definitions) {
+        final List<ProviderAttributes> configurations = new ArrayList<>(definitions.values());
+        Collections.sort(configurations);
         return configurations;
     }
 
-    private static BindAuthenticator getBindAuthenticator(final Properties properties) {
-        final DefaultSpringSecurityContextSource contextSource = new DefaultSpringSecurityContextSource(properties.getProperty("address"));
-        contextSource.setUserDn(properties.getProperty("userdn"));
-        contextSource.setPassword(properties.getProperty("password"));
+    private static BindAuthenticator getBindAuthenticator(final ProviderAttributes provider) {
+        final DefaultSpringSecurityContextSource contextSource = new DefaultSpringSecurityContextSource(provider.getProperty("address"));
+        contextSource.setUserDn(provider.getProperty("userdn"));
+        contextSource.setPassword(provider.getProperty("password"));
         contextSource.afterPropertiesSet();
 
         final BindAuthenticator ldapBindAuthenticator = new BindAuthenticator(contextSource);
-        ldapBindAuthenticator.setUserSearch(new FilterBasedLdapUserSearch(properties.getProperty("search.base"), properties.getProperty("search.filter"), contextSource));
+        ldapBindAuthenticator.setUserSearch(new FilterBasedLdapUserSearch(provider.getProperty("search.base"), provider.getProperty("search.filter"), contextSource));
         return ldapBindAuthenticator;
     }
 
