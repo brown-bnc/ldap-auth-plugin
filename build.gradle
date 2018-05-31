@@ -9,7 +9,7 @@
 
 buildscript {
     ext {
-        vXnatDev = '1.7.5-auth-B3-SNAPSHOT'
+        vXnatDev = '1.7.5-RC1-SNAPSHOT'
         vXnat = '1.7.5-SNAPSHOT'
     }
     repositories {
@@ -126,7 +126,7 @@ if (hasProperty("rt.17.jar")) {
         tasks.withType(JavaCompile) { task ->
             task.options.fork = true
             task.options.compilerArgs << "-XDignore.symbol.file"
-            task.options.bootClasspath = rt17jar as String
+            task.options.bootstrapClasspath = files(rt17jar)
         }
     }
 } else {
@@ -153,7 +153,7 @@ configurations {
 }
 
 jacoco {
-    toolVersion = dependencyManagement.importedProperties["jacoco.version"]
+    toolVersion << dependencyManagement.importedProperties["jacoco.version"]
 }
 
 jacocoTestReport {

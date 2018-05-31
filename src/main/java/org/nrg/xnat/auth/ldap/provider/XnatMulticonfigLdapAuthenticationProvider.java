@@ -66,7 +66,7 @@ public class XnatMulticonfigLdapAuthenticationProvider extends XnatLdapAuthentic
         _providerAttributes.put(primaryProviderId, primary);
 
         for (final ProviderAttributes configuration : configurations) {
-            final String             providerId = configuration.getProviderId();
+            final String providerId = configuration.getProviderId();
 
             _providerIds.add(providerId);
             _providerAttributes.put(providerId, configuration);
@@ -104,6 +104,11 @@ public class XnatMulticonfigLdapAuthenticationProvider extends XnatLdapAuthentic
     @Override
     public List<String> getProviderIds() {
         return _providerIds;
+    }
+
+    @Override
+    public List<XnatAuthenticationProvider> getProviders() {
+        return new ArrayList<XnatAuthenticationProvider>(_providers.values());
     }
 
     /**
