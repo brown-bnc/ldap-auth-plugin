@@ -23,10 +23,6 @@ import org.nrg.xnat.security.tokens.XnatAuthenticationToken;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.ldap.DefaultSpringSecurityContextSource;
-import org.springframework.security.ldap.authentication.BindAuthenticator;
-import org.springframework.security.ldap.authentication.LdapAuthenticator;
-import org.springframework.security.ldap.search.FilterBasedLdapUserSearch;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -47,7 +43,7 @@ public class XnatMulticonfigLdapAuthenticationProvider extends XnatLdapAuthentic
     }
 
     public XnatMulticonfigLdapAuthenticationProvider(final Map<String, ProviderAttributes> definitions, final XdatUserAuthService userAuthService, final SiteConfigPreferences preferences) {
-        super(getPrimaryAuthenticator(definitions));
+        super(getOrderedConfigurations(definitions).get(0));
 
         final List<ProviderAttributes> configurations = getOrderedConfigurations(definitions);
 
@@ -59,18 +55,19 @@ public class XnatMulticonfigLdapAuthenticationProvider extends XnatLdapAuthentic
         setProviderId(primaryProviderId);
         setName(primary.getName());
         setVisible(primary.isVisible());
-        setOrder(primary.getOrder());
+        setAutoEnabled(primary.isAutoEnabled());
+        setAutoVerified(primary.isAutoVerified());
         setUserDetailsContextMapper(new XnatLdapUserDetailsMapper(primaryProviderId, userAuthService, preferences, primary.getProperties()));
 
         _providerIds.add(primaryProviderId);
         _providerAttributes.put(primaryProviderId, primary);
 
-        for (final ProviderAttributes configuration : configurations) {
-            final String providerId = configuration.getProviderId();
+        for (final ProviderAttributes attributes : configurations) {
+            final String providerId = attributes.getProviderId();
 
             _providerIds.add(providerId);
-            _providerAttributes.put(providerId, configuration);
-            _providers.put(providerId, new XnatLdapAuthenticationProvider(providerId, configuration.getName(), getBindAuthenticator(configuration), new XnatLdapUserDetailsMapper(providerId, userAuthService, preferences, configuration.getProperties())));
+            _providerAttributes.put(providerId, attributes);
+            _providers.put(providerId, new XnatLdapAuthenticationProvider(attributes, getBindAuthenticator(attributes), new XnatLdapUserDetailsMapper(providerId, userAuthService, preferences, attributes.getProperties())));
         }
     }
 
@@ -132,11 +129,46 @@ public class XnatMulticonfigLdapAuthenticationProvider extends XnatLdapAuthentic
      * {@inheritDoc}
      */
     @Override
+    public boolean isAutoEnabled() {
+        return _autoEnabled;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setAutoEnabled(final boolean autoEnabled) {
+        _autoEnabled = autoEnabled;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isAutoVerified() {
+        return _autoVerified;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setAutoVerified(final boolean autoVerified) {
+        _autoVerified = autoVerified;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public boolean isVisible(final String providerId) {
         final XnatAuthenticationProvider provider = getProvider(providerId);
         return provider != null && provider.isVisible();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void setVisible(final String providerId, final boolean visible) {
         final XnatAuthenticationProvider provider = getProvider(providerId);
@@ -147,24 +179,22 @@ public class XnatMulticonfigLdapAuthenticationProvider extends XnatLdapAuthentic
     }
 
     /**
-     * {@inheritDoc}
+     * @deprecated Ordering of authentication providers is set through the {@link SiteConfigPreferences#getEnabledProviders()} property.
      */
+    @Deprecated
     @Override
     public int getOrder(final String providerId) {
-        final XnatAuthenticationProvider provider = getProvider(providerId);
-        return provider != null ? provider.getOrder() : -1;
+        log.info("The order property is deprecated and will be removed in a future version of XNAT.");
+        return 0;
     }
 
     /**
-     * {@inheritDoc}
+     * @deprecated Ordering of authentication providers is set through the {@link SiteConfigPreferences#getEnabledProviders()} property.
      */
+    @Deprecated
     @Override
     public void setOrder(final String providerId, final int order) {
-        final XnatAuthenticationProvider provider = getProvider(providerId);
-        if (provider != null) {
-            provider.setOrder(order);
-            _providerAttributes.get(providerId).setOrder(order);
-        }
+        log.info("The order property is deprecated and will be removed in a future version of XNAT.");
     }
 
     /**
@@ -214,28 +244,18 @@ public class XnatMulticonfigLdapAuthenticationProvider extends XnatLdapAuthentic
         return getName();
     }
 
-    private static LdapAuthenticator getPrimaryAuthenticator(final Map<String, ProviderAttributes> definitions) {
-        return getBindAuthenticator(getOrderedConfigurations(definitions).get(0));
-    }
-
     private static List<ProviderAttributes> getOrderedConfigurations(final Map<String, ProviderAttributes> definitions) {
-        final List<ProviderAttributes> configurations = new ArrayList<>(definitions.values());
-        Collections.sort(configurations);
+        final List<ProviderAttributes> configurations = new ArrayList<>();
+        for (final String key : new LinkedList<>(definitions.keySet())) {
+            configurations.add(definitions.get(key));
+        }
         return configurations;
-    }
-
-    private static BindAuthenticator getBindAuthenticator(final ProviderAttributes provider) {
-        final DefaultSpringSecurityContextSource contextSource = new DefaultSpringSecurityContextSource(provider.getProperty("address"));
-        contextSource.setUserDn(provider.getProperty("userdn"));
-        contextSource.setPassword(provider.getProperty("password"));
-        contextSource.afterPropertiesSet();
-
-        final BindAuthenticator ldapBindAuthenticator = new BindAuthenticator(contextSource);
-        ldapBindAuthenticator.setUserSearch(new FilterBasedLdapUserSearch(provider.getProperty("search.base"), provider.getProperty("search.filter"), contextSource));
-        return ldapBindAuthenticator;
     }
 
     private final List<String>                                _providerIds        = new ArrayList<>();
     private final Map<String, ProviderAttributes>             _providerAttributes = new HashMap<>();
     private final Map<String, XnatLdapAuthenticationProvider> _providers          = new HashMap<>();
+
+    private boolean _autoEnabled;
+    private boolean _autoVerified;
 }

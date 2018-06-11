@@ -12,9 +12,11 @@ package org.nrg.xnat.auth.ldap.provider;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.nrg.xdat.XDAT;
+import org.nrg.xdat.preferences.SiteConfigPreferences;
 import org.nrg.xdat.services.XdatUserAuthService;
 import org.nrg.xft.security.UserI;
 import org.nrg.xnat.auth.ldap.tokens.XnatLdapUsernamePasswordAuthenticationToken;
+import org.nrg.xnat.security.provider.ProviderAttributes;
 import org.nrg.xnat.security.provider.XnatAuthenticationProvider;
 import org.nrg.xnat.security.tokens.XnatAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationServiceException;
@@ -23,30 +25,44 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.ldap.DefaultSpringSecurityContextSource;
+import org.springframework.security.ldap.authentication.BindAuthenticator;
 import org.springframework.security.ldap.authentication.LdapAuthenticationProvider;
 import org.springframework.security.ldap.authentication.LdapAuthenticator;
-import org.springframework.security.ldap.userdetails.LdapAuthoritiesPopulator;
+import org.springframework.security.ldap.search.FilterBasedLdapUserSearch;
 import org.springframework.security.ldap.userdetails.UserDetailsContextMapper;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 @Component
 @Slf4j
 public class XnatLdapAuthenticationProvider extends LdapAuthenticationProvider implements XnatAuthenticationProvider {
-    @SuppressWarnings("unused")
-    public XnatLdapAuthenticationProvider(final String providerId, final String displayName, final LdapAuthenticator authenticator, final UserDetailsContextMapper contextMapper) {
+    public static final String LDAP_ADDRESS           = "address";
+    public static final String LDAP_USERDN            = "userdn";
+    public static final String LDAP_PASSWORD          = "password";
+    public static final String LDAP_SEARCH_BASE       = "search.base";
+    public static final String LDAP_SEARCH_FILTER     = "search.filter";
+    public static final String LDAP_VALIDATE_USERNAME = "validate.username";
+    public static final String LDAP_VALIDATE_PASSWORD = "validate.password";
+
+    public XnatLdapAuthenticationProvider(final ProviderAttributes attributes) {
+        super(getBindAuthenticator(attributes));
+        _attributes = attributes;
+    }
+
+    public XnatLdapAuthenticationProvider(final ProviderAttributes attributes, final LdapAuthenticator authenticator, final UserDetailsContextMapper contextMapper) {
         super(authenticator);
-        setProviderId(providerId);
-        setName(displayName);
+
         setUserDetailsContextMapper(contextMapper);
-    }
 
-    public XnatLdapAuthenticationProvider(final LdapAuthenticator authenticator) {
-        super(authenticator);
-    }
+        setProviderId(attributes.getProviderId());
+        setName(attributes.getName());
+        setVisible(attributes.isVisible());
+        setAutoEnabled(attributes.isAutoEnabled());
+        setAutoVerified(attributes.isAutoVerified());
 
-    @SuppressWarnings("unused")
-    public XnatLdapAuthenticationProvider(final LdapAuthenticator authenticator, final LdapAuthoritiesPopulator authoritiesPopulator) {
-        super(authenticator, authoritiesPopulator);
+        _attributes = attributes;
     }
 
     @Override
@@ -96,14 +112,77 @@ public class XnatLdapAuthenticationProvider extends LdapAuthenticationProvider i
         return XdatUserAuthService.LDAP;
     }
 
+    /**
+     * Indicates whether the provider should be visible to and selectable by users. <b>false</b> usually indicates an
+     * internal authentication provider, e.g. token authentication. The LDAP authentication provider is visible by
+     * default.
+     *
+     * @return <b>true</b> if the provider should be visible to and usable by users.
+     */
     @Override
-    public int getOrder() {
-        return _order;
+    public boolean isVisible() {
+        return _visible;
     }
 
+    /**
+     * Sets whether the provider should be visible or not as an option for user.
+     *
+     * @param visible Whether the provider should be visible to and usable by users.
+     */
+    @Override
+    public void setVisible(final boolean visible) {
+        _visible = visible;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isAutoEnabled() {
+        return _autoEnabled;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setAutoEnabled(final boolean autoEnabled) {
+        _autoEnabled = autoEnabled;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isAutoVerified() {
+        return _autoVerified;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setAutoVerified(final boolean autoVerified) {
+        _autoVerified = autoVerified;
+    }
+
+    /**
+     * @deprecated Ordering of authentication providers is set through the {@link SiteConfigPreferences#getEnabledProviders()} property.
+     */
+    @Deprecated
+    @Override
+    public int getOrder() {
+        log.info("The order property is deprecated and will be removed in a future version of XNAT.");
+        return 0;
+    }
+
+    /**
+     * @deprecated Ordering of authentication providers is set through the {@link SiteConfigPreferences#setEnabledProviders(List)} property.
+     */
+    @Deprecated
     @Override
     public void setOrder(final int order) {
-        _order = order;
+        log.info("The order property is deprecated and will be removed in a future version of XNAT.");
     }
 
     @Override
@@ -145,35 +224,31 @@ public class XnatLdapAuthenticationProvider extends LdapAuthenticationProvider i
                StringUtils.equals(getProviderId(), ((XnatLdapUsernamePasswordAuthenticationToken) authentication).getProviderId());
     }
 
-    /**
-     * Indicates whether the provider should be visible to and selectable by users. <b>false</b> usually indicates an
-     * internal authentication provider, e.g. token authentication. The LDAP authentication provider is visible by
-     * default.
-     *
-     * @return <b>true</b> if the provider should be visible to and usable by users.
-     */
-    @Override
-    public boolean isVisible() {
-        return _visible;
-    }
-
-    /**
-     * Sets whether the provider should be visible or not as an option for user.
-     *
-     * @param visible Whether the provider should be visible to and usable by users.
-     */
-    @Override
-    public void setVisible(final boolean visible) {
-        _visible = visible;
-    }
-
     @Override
     public String toString() {
         return getName();
     }
 
+    protected static BindAuthenticator getBindAuthenticator(final ProviderAttributes provider) {
+        final DefaultSpringSecurityContextSource contextSource = new DefaultSpringSecurityContextSource(provider.getProperty(LDAP_ADDRESS));
+        contextSource.setUserDn(provider.getProperty(LDAP_USERDN));
+        contextSource.setPassword(provider.getProperty(LDAP_PASSWORD));
+        contextSource.afterPropertiesSet();
+
+        final BindAuthenticator ldapBindAuthenticator = new BindAuthenticator(contextSource);
+        ldapBindAuthenticator.setUserSearch(new FilterBasedLdapUserSearch(provider.getProperty(LDAP_SEARCH_BASE), provider.getProperty(LDAP_SEARCH_FILTER), contextSource));
+        return ldapBindAuthenticator;
+    }
+
+    protected ProviderAttributes getAttributes() {
+        return _attributes;
+    }
+
+    private final ProviderAttributes _attributes;
+
     private String  _displayName = "";
     private String  _providerId  = "";
-    private int     _order       = -1;
     private boolean _visible     = true;
+    private boolean _autoEnabled;
+    private boolean _autoVerified;
 }

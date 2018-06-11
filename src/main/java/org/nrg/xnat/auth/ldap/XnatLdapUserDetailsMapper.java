@@ -33,9 +33,6 @@ import java.util.Properties;
 @Component
 @Slf4j
 public class XnatLdapUserDetailsMapper extends LdapUserDetailsMapper implements LdapAuthoritiesPopulator {
-
-    private static final String NOT_AUTO_ENABLED_MESSAGE = "Successful first-time authentication via LDAP, but accounts are not auto-enabled or email verification required.  We'll treat this the same as we would a user registration";
-
     public XnatLdapUserDetailsMapper(final String providerId, final XdatUserAuthService userAuthService, final SiteConfigPreferences preferences, final Properties properties) {
         super();
         Assert.hasText(providerId, "You must provide an authentication provider ID.");
@@ -95,6 +92,8 @@ public class XnatLdapUserDetailsMapper extends LdapUserDetailsMapper implements 
     public Collection<GrantedAuthority> getGrantedAuthorities(final DirContextOperations userData, final String username) {
         return ROLE_USER;
     }
+
+    private static final String NOT_AUTO_ENABLED_MESSAGE = "Successful first-time authentication via LDAP, but accounts are not auto.enabled or email verification required.  We'll treat this the same as we would a user registration";
 
     private static final List<GrantedAuthority> ROLE_USER       = Collections.singletonList((GrantedAuthority) new SimpleGrantedAuthority("ROLE_USER"));
     private static final String                 PROPERTY_PREFIX = "attributes.";
