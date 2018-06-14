@@ -15,13 +15,16 @@ import org.nrg.xdat.XDAT;
 import org.nrg.xdat.preferences.SiteConfigPreferences;
 import org.nrg.xdat.services.XdatUserAuthService;
 import org.nrg.xft.security.UserI;
+import org.nrg.xnat.auth.ldap.XnatLdapUserDetailsMapper;
 import org.nrg.xnat.auth.ldap.tokens.XnatLdapUsernamePasswordAuthenticationToken;
 import org.nrg.xnat.security.provider.ProviderAttributes;
 import org.nrg.xnat.security.provider.XnatAuthenticationProvider;
 import org.nrg.xnat.security.tokens.XnatAuthenticationToken;
+import org.springframework.ldap.core.DirContextOperations;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.CredentialsExpiredException;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.ProviderNotFoundException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -33,6 +36,7 @@ import org.springframework.security.ldap.search.FilterBasedLdapUserSearch;
 import org.springframework.security.ldap.userdetails.UserDetailsContextMapper;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.Nonnull;
 import java.util.List;
 
 @Component
@@ -46,23 +50,27 @@ public class XnatLdapAuthenticationProvider extends LdapAuthenticationProvider i
     public static final String LDAP_VALIDATE_USERNAME = "validate.username";
     public static final String LDAP_VALIDATE_PASSWORD = "validate.password";
 
-    public XnatLdapAuthenticationProvider(final ProviderAttributes attributes) {
-        super(getBindAuthenticator(attributes));
-        _attributes = attributes;
+    public XnatLdapAuthenticationProvider(final ProviderAttributes attributes, final XdatUserAuthService userAuthService, final SiteConfigPreferences preferences) {
+        this(attributes, getLdapAuthenticator(attributes), getContextMapper(attributes, userAuthService, preferences));
     }
 
     public XnatLdapAuthenticationProvider(final ProviderAttributes attributes, final LdapAuthenticator authenticator, final UserDetailsContextMapper contextMapper) {
         super(authenticator);
-
-        setUserDetailsContextMapper(contextMapper);
 
         setProviderId(attributes.getProviderId());
         setName(attributes.getName());
         setVisible(attributes.isVisible());
         setAutoEnabled(attributes.isAutoEnabled());
         setAutoVerified(attributes.isAutoVerified());
+        if (contextMapper != null) {
+            setUserDetailsContextMapper(contextMapper);
+        }
 
         _attributes = attributes;
+    }
+
+    protected XnatLdapAuthenticationProvider(final List<ProviderAttributes> attributesList, final XdatUserAuthService userAuthService, final SiteConfigPreferences preferences) {
+        this(getPrimaryAttributes(attributesList), userAuthService, preferences);
     }
 
     @Override
@@ -229,20 +237,48 @@ public class XnatLdapAuthenticationProvider extends LdapAuthenticationProvider i
         return getName();
     }
 
-    protected static BindAuthenticator getBindAuthenticator(final ProviderAttributes provider) {
-        final DefaultSpringSecurityContextSource contextSource = new DefaultSpringSecurityContextSource(provider.getProperty(LDAP_ADDRESS));
-        contextSource.setUserDn(provider.getProperty(LDAP_USERDN));
-        contextSource.setPassword(provider.getProperty(LDAP_PASSWORD));
-        contextSource.afterPropertiesSet();
-
-        final BindAuthenticator ldapBindAuthenticator = new BindAuthenticator(contextSource);
-        ldapBindAuthenticator.setUserSearch(new FilterBasedLdapUserSearch(provider.getProperty(LDAP_SEARCH_BASE), provider.getProperty(LDAP_SEARCH_FILTER), contextSource));
-        return ldapBindAuthenticator;
-    }
-
     protected ProviderAttributes getAttributes() {
         return _attributes;
     }
+
+    private static ProviderAttributes getPrimaryAttributes(final List<ProviderAttributes> attributesList) {
+        return attributesList.isEmpty() ? NULL_ATTRIBUTES : attributesList.get(0);
+    }
+
+    @Nonnull
+    private static LdapAuthenticator getLdapAuthenticator(@Nonnull final ProviderAttributes attributes) {
+        if (StringUtils.equals(NULL_PROVIDER, attributes.getProviderId())) {
+            return getNullAuthenticator();
+        }
+
+        final DefaultSpringSecurityContextSource contextSource = new DefaultSpringSecurityContextSource(attributes.getProperty(LDAP_ADDRESS));
+        contextSource.setUserDn(attributes.getProperty(LDAP_USERDN));
+        contextSource.setPassword(attributes.getProperty(LDAP_PASSWORD));
+        contextSource.afterPropertiesSet();
+
+        final BindAuthenticator ldapBindAuthenticator = new BindAuthenticator(contextSource);
+        ldapBindAuthenticator.setUserSearch(new FilterBasedLdapUserSearch(attributes.getProperty(LDAP_SEARCH_BASE), attributes.getProperty(LDAP_SEARCH_FILTER), contextSource));
+        return ldapBindAuthenticator;
+    }
+
+    private static LdapAuthenticator getNullAuthenticator() {
+        return new LdapAuthenticator() {
+            @Override
+            public DirContextOperations authenticate(final Authentication authentication) {
+                throw new ProviderNotFoundException("There is no valid LDAP service configured.");
+            }
+        };
+    }
+
+    private static UserDetailsContextMapper getContextMapper(final ProviderAttributes attributes, final XdatUserAuthService userAuthService, final SiteConfigPreferences preferences) {
+        if (StringUtils.equals(NULL_PROVIDER, attributes.getProviderId())) {
+            return null;
+        }
+        return new XnatLdapUserDetailsMapper(attributes.getProviderId(), userAuthService, preferences, attributes.getProperties());
+    }
+
+    private static final String             NULL_PROVIDER   = "null-ldap-provider";
+    private static final ProviderAttributes NULL_ATTRIBUTES = new ProviderAttributes(NULL_PROVIDER, XdatUserAuthService.LDAP, NULL_PROVIDER, false, false, false, null);
 
     private final ProviderAttributes _attributes;
 

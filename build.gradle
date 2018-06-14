@@ -108,6 +108,7 @@ dependencies {
 
     implementation localGroovy()
 
+    compileOnly "com.google.code.findbugs:jsr305"
     compileOnly "org.apache.ivy:ivy:2.4.0"
     compileOnly("stratum:stratum") {
         transitive = false

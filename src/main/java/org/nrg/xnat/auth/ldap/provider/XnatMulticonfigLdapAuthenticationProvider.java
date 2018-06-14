@@ -9,11 +9,11 @@
 
 package org.nrg.xnat.auth.ldap.provider;
 
+import com.google.common.collect.ImmutableList;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.nrg.xdat.preferences.SiteConfigPreferences;
 import org.nrg.xdat.services.XdatUserAuthService;
-import org.nrg.xnat.auth.ldap.XnatLdapUserDetailsMapper;
 import org.nrg.xnat.auth.ldap.tokens.XnatLdapUsernamePasswordAuthenticationToken;
 import org.nrg.xnat.security.provider.AuthenticationProviderConfigurationLocator;
 import org.nrg.xnat.security.provider.ProviderAttributes;
@@ -25,6 +25,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.Nonnull;
 import java.util.*;
 
 import static org.nrg.xdat.services.XdatUserAuthService.LDAP;
@@ -39,35 +40,29 @@ import static org.nrg.xdat.services.XdatUserAuthService.LDAP;
 public class XnatMulticonfigLdapAuthenticationProvider extends XnatLdapAuthenticationProvider implements XnatMulticonfigAuthenticationProvider {
     @Autowired
     public XnatMulticonfigLdapAuthenticationProvider(final AuthenticationProviderConfigurationLocator locator, final XdatUserAuthService userAuthService, final SiteConfigPreferences preferences) {
-        this(locator.getProviderDefinitionsByType(LDAP), userAuthService, preferences);
+        this(locator.getProviderDefinitionsByAuthMethod(LDAP), userAuthService, preferences);
     }
 
     public XnatMulticonfigLdapAuthenticationProvider(final Map<String, ProviderAttributes> definitions, final XdatUserAuthService userAuthService, final SiteConfigPreferences preferences) {
-        super(getOrderedConfigurations(definitions).get(0));
+        super(getOrderedConfigurations(definitions), userAuthService, preferences);
 
-        final List<ProviderAttributes> configurations = getOrderedConfigurations(definitions);
+        // If there are no definitions or there's only one definition, that's handled in the superclass, so
+        // we can skip the following initialization.
+        if (definitions != null && definitions.size() > 1) {
+            final List<ProviderAttributes> configurations = getOrderedConfigurations(definitions);
 
-        // We've already initialized the super class with the primary bind authenticator, now we just need to
-        // set the remaining provider properties for this instance. All of the other providers go into the map.
-        final ProviderAttributes primary           = configurations.remove(0);
-        final String             primaryProviderId = primary.getProviderId();
+            // We've already initialized the super class with the first ordered configuration. Now we just need to
+            // set the remaining provider properties for this instance. All of the other providers go into the map.
+            final ProviderAttributes primary           = configurations.remove(0);
+            final String             primaryProviderId = primary.getProviderId();
 
-        setProviderId(primaryProviderId);
-        setName(primary.getName());
-        setVisible(primary.isVisible());
-        setAutoEnabled(primary.isAutoEnabled());
-        setAutoVerified(primary.isAutoVerified());
-        setUserDetailsContextMapper(new XnatLdapUserDetailsMapper(primaryProviderId, userAuthService, preferences, primary.getProperties()));
+            _providerAttributes.put(primaryProviderId, primary);
 
-        _providerIds.add(primaryProviderId);
-        _providerAttributes.put(primaryProviderId, primary);
-
-        for (final ProviderAttributes attributes : configurations) {
-            final String providerId = attributes.getProviderId();
-
-            _providerIds.add(providerId);
-            _providerAttributes.put(providerId, attributes);
-            _providers.put(providerId, new XnatLdapAuthenticationProvider(attributes, getBindAuthenticator(attributes), new XnatLdapUserDetailsMapper(providerId, userAuthService, preferences, attributes.getProperties())));
+            for (final ProviderAttributes attributes : configurations) {
+                final String providerId = attributes.getProviderId();
+                _providerAttributes.put(providerId, attributes);
+                _providers.put(providerId, new XnatLdapAuthenticationProvider(attributes, userAuthService, preferences));
+            }
         }
     }
 
@@ -100,7 +95,7 @@ public class XnatMulticonfigLdapAuthenticationProvider extends XnatLdapAuthentic
      */
     @Override
     public List<String> getProviderIds() {
-        return _providerIds;
+        return ImmutableList.copyOf(_providerAttributes.keySet());
     }
 
     @Override
@@ -244,7 +239,11 @@ public class XnatMulticonfigLdapAuthenticationProvider extends XnatLdapAuthentic
         return getName();
     }
 
+    @Nonnull
     private static List<ProviderAttributes> getOrderedConfigurations(final Map<String, ProviderAttributes> definitions) {
+        if (definitions == null || definitions.isEmpty()) {
+            return Collections.emptyList();
+        }
         final List<ProviderAttributes> configurations = new ArrayList<>();
         for (final String key : new LinkedList<>(definitions.keySet())) {
             configurations.add(definitions.get(key));
@@ -252,7 +251,6 @@ public class XnatMulticonfigLdapAuthenticationProvider extends XnatLdapAuthentic
         return configurations;
     }
 
-    private final List<String>                                _providerIds        = new ArrayList<>();
     private final Map<String, ProviderAttributes>             _providerAttributes = new HashMap<>();
     private final Map<String, XnatLdapAuthenticationProvider> _providers          = new HashMap<>();
 
