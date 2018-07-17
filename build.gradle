@@ -31,7 +31,7 @@ buildscript {
         classpath "org.nrg.xnat.build:xnat-data-builder:${vXnat}"
         classpath "io.spring.gradle:dependency-management-plugin:1.0.3.RELEASE"
         classpath "gradle.plugin.com.palantir.gradle.gitversion:gradle-git-version:0.8.0"
-        classpath "io.franzbecker:gradle-lombok:1.10"
+        classpath "io.franzbecker:gradle-lombok:1.14"
     }
 }
 
@@ -163,6 +163,11 @@ jacocoTestReport {
         csv.enabled = false
         html.destination file("${buildDir}/jacocoHtml")
     }
+}
+
+lombok {
+    version = dependencyManagement.importedProperties["lombok.version"]
+    sha256 = ""
 }
 
 task fatJar(type: Jar) {

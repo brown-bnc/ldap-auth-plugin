@@ -18,7 +18,6 @@ import org.nrg.xnat.security.exceptions.NewAutoAccountNotAutoEnabledException;
 import org.springframework.ldap.core.DirContextAdapter;
 import org.springframework.ldap.core.DirContextOperations;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.ldap.userdetails.LdapAuthoritiesPopulator;
 import org.springframework.security.ldap.userdetails.LdapUserDetailsMapper;
@@ -26,8 +25,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 
 import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 import java.util.Properties;
 
 @Component
@@ -90,12 +87,11 @@ public class XnatLdapUserDetailsMapper extends LdapUserDetailsMapper implements 
 
     @Override
     public Collection<GrantedAuthority> getGrantedAuthorities(final DirContextOperations userData, final String username) {
-        return ROLE_USER;
+        return Users.AUTHORITIES_USER;
     }
 
     private static final String NOT_AUTO_ENABLED_MESSAGE = "Successful first-time authentication via LDAP, but accounts are not auto.enabled or email verification required.  We'll treat this the same as we would a user registration";
 
-    private static final List<GrantedAuthority> ROLE_USER       = Collections.singletonList((GrantedAuthority) new SimpleGrantedAuthority("ROLE_USER"));
     private static final String                 PROPERTY_PREFIX = "attributes.";
     private static final String                 PROPERTY_EMAIL  = PROPERTY_PREFIX + "email";
     private static final String                 PROPERTY_FIRST  = PROPERTY_PREFIX + "firstname";
