@@ -77,6 +77,8 @@ dependencyManagement.imports {
 }
 
 dependencies {
+    annotationProcessor "org.nrg:framework"
+
     implementation("org.nrg.xnat:web:${vXnatDev}") {
         transitive = false
     }
