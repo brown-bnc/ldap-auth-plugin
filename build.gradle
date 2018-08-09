@@ -120,6 +120,14 @@ dependencies {
     testImplementation "org.springframework:spring-test"
 }
 
+idea {
+    module {
+        inheritOutputDirs = false
+        outputDir = compileJava.destinationDir
+        testOutputDir = compileTestJava.destinationDir
+    }
+}
+
 if (hasProperty("rt.17.jar")) {
     // Solution for bootstrap classpath warning and possible issues with compatibility with 1.7 libraries
     // was taken from this post on discuss.gradle.org: http://bit.ly/24xD9j0
