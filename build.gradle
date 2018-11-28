@@ -40,7 +40,6 @@ buildscript {
 apply plugin: "application"
 apply plugin: "com.palantir.git-version"
 apply plugin: "eclipse"
-apply plugin: "groovy"
 apply plugin: "idea"
 apply plugin: "io.franzbecker.gradle-lombok"
 apply plugin: "io.spring.dependency-management"

@@ -8,3 +8,4 @@
  */
 
 rootProject.name = "ldap-auth-plugin"
+enableFeaturePreview("STABLE_PUBLISHING")
