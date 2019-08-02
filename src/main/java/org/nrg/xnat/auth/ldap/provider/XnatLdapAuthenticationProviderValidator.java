@@ -53,13 +53,8 @@ public class XnatLdapAuthenticationProviderValidator implements XnatAuthenticati
         final String  bindingSearchBase        = atoms.length > 1 ? atoms[1] : "";
         final String  bindingUsername          = atoms[0];
 
-        println("Validating the binding user account '{}' with search base '{}'", bindingUsername, bindingSearchBase);
-        final boolean bindingUserAuthenticated = bindAndAuthenticate(contextSource, bindingSearchBase, "(${bindingUsername})", bindingUsername, bindingPassword);
-
-        if (bindingUserAuthenticated) {
-            println("Binding user '{}' authenticated successfully, validating the user account '{}'", bindingUsername, username);
-            bindAndAuthenticate(contextSource, searchBase, searchFilter, username, password);
-        }
+        println("Binding account {}, user account {}", bindingUsername, username);
+        bindAndAuthenticate(contextSource, searchBase, searchFilter, username, password);
 
         final String message = _buffer.getBuffer().toString();
         log.info(message);

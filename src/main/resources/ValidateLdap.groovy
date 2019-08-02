@@ -51,13 +51,9 @@ final String[] atoms = userDn.split ",", 2
 def bindingUsername = atoms[0]
 def bindingSearchBase = atoms.size() > 1 ? (atoms[1]) : ""
 
-println "Validating the binding user account '${bindingUsername}' with search base '${bindingSearchBase}'"
-def bindingUserAuthenticated = BindAndAuthenticate(contextSource, bindingSearchBase, "(${bindingUsername})", bindingUsername, bindingPassword)
+println "Binding account '${bindingUsername}', user account '${username}"
+BindAndAuthenticate(contextSource, searchBase, searchFilter, username, password)
 
-if (bindingUserAuthenticated) {
-    println "Binding user '${bindingUsername}' authenticated successfully, validating the user account '${username}'"
-    BindAndAuthenticate(contextSource, searchBase, searchFilter, username, password)
-}
 
 private boolean BindAndAuthenticate(DefaultSpringSecurityContextSource contextSource, String searchBase, String searchFilter, username, String password) {
     println "Creating user search object with search base '${searchBase}' and filter '${searchFilter}"
@@ -82,3 +78,4 @@ private boolean BindAndAuthenticate(DefaultSpringSecurityContextSource contextSo
         false
     }
 }
+
